@@ -1,5 +1,5 @@
 from tnbus import TNBus, API, By, Cond
-from datetime import datetime
+from datetime import datetime, timedelta
 from pytz import timezone
 from json import dump, load
 from json.decoder import JSONDecodeError
@@ -48,20 +48,25 @@ while True:
                 ok, ok_a = tr, a
 
         if ok is None:
-            arr = delay = "N/A"
+            arr = "N/A"
+            delay = 0
         else:
             delay = ok.delay or 0
             arr = st.get_trip_stop(ok).arrival
+            if 0 <= arr.hour <= 4:
+                arr = datetime.combine(datetime.today() + timedelta(days=1), arr)
+            else:
+                arr = datetime.combine(datetime.today(), arr)
 
         data.append({
             "name": assoc[st.id],
-            "time": arr if isinstance(arr, str) else arr.strftime("%H:%M"),
+            "time": arr.timestamp() if isinstance(arr, datetime) else arr,
             "delay": delay,
-            "is_delayed": delay != "N/A" and delay != 0
+            "status": (-1 if arr == "N/A" else (0 if delay == 0 else (1 if delay > 0 else 2)))
         })
 
     dump(data,
-         open("/var/www/django/raspserver2/static/busses.json", "w+"),
+         open("busses.json", "w+"),
          indent=4)
     print(data)
     sleep(15)
