@@ -2,6 +2,7 @@ from tnbus import TNBus, API, By, Cond
 from datetime import datetime
 from pytz import timezone
 from json import dump, load
+from json.decoder import JSONDecodeError
 from time import sleep
 
 with open("auth") as f:
@@ -31,7 +32,12 @@ while True:
         i -= 1
     data = []
     for st in stops.values():
-        trs = st.load_trips(t, limit=3)
+        for _ in range(10):
+            try:
+                trs = st.load_trips(t, limit=3)
+                break
+            except JSONDecodeError:
+                pass
         ok, ok_a = None, None
         for tr in trs:
             a = st.get_trip_stop(tr).arrival.replace(tzinfo=timezone("cet"))
@@ -49,7 +55,7 @@ while True:
 
         data.append({
             "name": assoc[st.id],
-            "time": arr.strftime("%H:%M"),
+            "time": arr if isinstance(arr, str) else arr.strftime("%H:%M"),
             "delay": delay,
             "is_delayed": delay != "N/A" and delay != 0
         })
